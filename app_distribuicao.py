@@ -40,7 +40,7 @@ def login_page() -> None:
                 ZiliMetrics
             </h1>
             <p style="color:#6B7280; font-size:0.95rem; margin:0;">
-                Distribuição de Contratos · Taxa 4,98%
+                Análise de Dados
             </p>
         </div>
     """, unsafe_allow_html=True)
@@ -76,6 +76,7 @@ def login_page() -> None:
             st.session_state.update({
                 "logged_in":    True,
                 "display_name": user.get("display_name", username),
+                "is_admin":     user.get("is_admin", False),
             })
             st.rerun()
         else:
@@ -92,11 +93,92 @@ def login_page() -> None:
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
+GOLD      = "#F0B429"
+DARK_BG   = "#0F0F0F"
+DARK_CARD = "#1A1A1A"
+BORDER    = "#262626"
+MUTED     = "#6B7280"
+
+CSS = f"""
+<style>
+#MainMenu {{ visibility: hidden; }}
+footer {{ visibility: hidden; }}
+[data-testid="stDecoration"] {{ display: none; }}
+[data-testid="stToolbarActions"] {{ visibility: hidden; }}
+[data-testid="stBaseButton-header"] {{ visibility: hidden; }}
+[data-testid="InputInstructions"] {{ display: none !important; }}
+h1 a, h2 a, h3 a, h4 a, h5 a, h6 a {{ display: none !important; }}
+
+.stApp {{ background-color: {DARK_BG}; color: #E5E7EB; }}
+
+[data-testid="stSidebar"] > div:first-child {{
+    background-color: #111111;
+    border-right: 1px solid {BORDER};
+    padding-top: 1.5rem;
+}}
+
+.stButton > button {{
+    background-color: {GOLD} !important;
+    color: {DARK_BG} !important;
+    border: none !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+}}
+.stButton > button:hover {{
+    background-color: #D4980F !important;
+    color: {DARK_BG} !important;
+}}
+
+div[data-baseweb="input"] > div {{
+    background-color: {DARK_CARD} !important;
+    border-color: #333333 !important;
+    border-radius: 6px !important;
+}}
+div[data-baseweb="input"] > div:focus-within {{
+    border-color: {GOLD} !important;
+    box-shadow: none !important;
+}}
+
+div[data-baseweb="select"] > div {{
+    background-color: {DARK_CARD} !important;
+    border-color: #333333 !important;
+    border-radius: 6px !important;
+}}
+
+[data-testid="stDataFrame"] {{
+    border: 1px solid {BORDER};
+    border-radius: 8px;
+    overflow: hidden;
+}}
+
+hr {{ border-color: {BORDER} !important; }}
+
+[data-testid="stFileUploader"] {{
+    background-color: {DARK_CARD};
+    border: 1px dashed #444 !important;
+    border-radius: 8px;
+}}
+
+[data-testid="stTab"] {{
+    color: {MUTED} !important;
+}}
+[data-testid="stTab"][aria-selected="true"] {{
+    color: {GOLD} !important;
+    border-bottom-color: {GOLD} !important;
+}}
+</style>
+"""
+
 st.set_page_config(
-    page_title="Taxa 4,98% — Distribuição",
+    page_title="ZiliMetrics",
     page_icon="📊",
     layout="wide",
 )
+
+st.markdown(CSS, unsafe_allow_html=True)
+
+# Estado compartilhado entre todas as sessões do mesmo processo
+_SHARED: dict = {"csv_bytes": None}
 
 if not st.session_state.get("logged_in"):
     login_page()
@@ -181,23 +263,40 @@ def _load(file_bytes: bytes):
     return load_data(io.BytesIO(file_bytes))
 
 
-uploaded = st.file_uploader(
-    "Faça upload do relatório CSV (sep `;`)",
-    type="csv",
-    label_visibility="collapsed",
-)
+is_admin = st.session_state.get("is_admin", False)
 
-if uploaded is None:
-    st.info("⬆️ Faça o upload do arquivo CSV para começar.")
+if is_admin:
+    uploaded = st.file_uploader(
+        "Faça upload do relatório CSV (sep `;`)",
+        type="csv",
+        label_visibility="collapsed",
+    )
+    if uploaded is not None:
+        _SHARED["csv_bytes"] = uploaded.read()
+
+if _SHARED["csv_bytes"] is None:
+    if is_admin:
+        st.info("⬆️ Faça o upload do arquivo CSV para começar.")
+    else:
+        st.info("⏳ Nenhum dado disponível no momento. Aguarde o administrador carregar o relatório.")
     st.stop()
 
-df = _load(uploaded.read())
+df = _load(_SHARED["csv_bytes"])
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 
 with st.sidebar:
+    st.markdown(f"""
+        <div style="padding:0 0.5rem 0.75rem 0.5rem;">
+            <span style="font-size:1.35rem; font-weight:700; color:{GOLD}; letter-spacing:0.5px;">
+                ZiliMetrics
+            </span><br>
+            <span style="font-size:0.78rem; color:{MUTED};">ZiliCred</span>
+        </div>
+    """, unsafe_allow_html=True)
+    st.divider()
     st.markdown(
-        f"<p style='font-size:0.85rem; color:#6B7280; margin-bottom:0.25rem;'>"
+        f"<p style='font-size:0.85rem; color:{MUTED}; margin-bottom:0.5rem;'>"
         f"{st.session_state.get('display_name', '')}</p>",
         unsafe_allow_html=True,
     )
@@ -206,7 +305,7 @@ with st.sidebar:
         st.session_state.pop("display_name", None)
         st.rerun()
     st.divider()
-    st.title("Filtros")
+    st.markdown(f"<p style='font-weight:600; color:{GOLD};'>Filtros</p>", unsafe_allow_html=True)
     grupo = st.radio(
         "Grupo",
         ["Todos", "Suspenso", "Aprovado"],
