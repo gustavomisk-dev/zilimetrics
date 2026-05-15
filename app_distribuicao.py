@@ -222,8 +222,11 @@ st.set_page_config(
 
 st.markdown(CSS, unsafe_allow_html=True)
 
-# Estado compartilhado entre todas as sessões do mesmo processo
-_SHARED: dict = {"csv_bytes": None}
+@st.cache_resource
+def _get_shared():
+    return {"csv_bytes": None}
+
+_SHARED = _get_shared()
 
 if not st.session_state.get("logged_in"):
     login_page()
@@ -333,12 +336,6 @@ with st.sidebar:
         st.rerun()
     st.divider()
 
-    if is_admin:
-        st.divider()
-        uploaded = st.file_uploader("Relatório CSV", type="csv")
-        if uploaded is not None:
-            _SHARED["csv_bytes"] = uploaded.read()
-        st.divider()
 
 # ── JavaScript sidebar ────────────────────────────────────────────────────────
 
@@ -375,12 +372,34 @@ if st.session_state.pop("expand_sidebar", False):
         </script>
     """, height=0, scrolling=False)
 
+# ── Upload na sidebar (admin) ─────────────────────────────────────────────────
+
+if is_admin:
+    with st.sidebar:
+        st.divider()
+        st.markdown(
+            f"<p style='font-weight:600; color:{GOLD}; margin-bottom:0.4rem;'>Upload de Relatório</p>",
+            unsafe_allow_html=True,
+        )
+        st.session_state.setdefault("_up_n", 0)
+        uploaded = st.file_uploader(
+            "Relatório CSV",
+            type="csv",
+            accept_multiple_files=False,
+            key=f"_uploader_{st.session_state['_up_n']}",
+            label_visibility="collapsed",
+        )
+        if uploaded is not None:
+            if st.button("Salvar", use_container_width=True):
+                _SHARED["csv_bytes"] = uploaded.read()
+                st.cache_data.clear()
+                st.session_state["_up_n"] += 1
+                st.rerun()
+
 # ── Verifica dados ────────────────────────────────────────────────────────────
 
 if _SHARED["csv_bytes"] is None:
-    if is_admin:
-        st.info("⬆️ Faça o upload do arquivo CSV na sidebar para começar.")
-    else:
+    if not is_admin:
         st.info("⏳ Nenhum dado disponível no momento. Aguarde o administrador carregar o relatório.")
     st.stop()
 
