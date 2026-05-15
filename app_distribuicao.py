@@ -5,8 +5,11 @@ Executar: streamlit run distribuicao_nova_taxa/app_distribuicao.py
 
 import sys
 from pathlib import Path
+from datetime import datetime, timedelta
 
 import io
+import json
+import bcrypt
 import requests
 import pandas as pd
 import plotly.express as px
@@ -15,6 +18,78 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).parent))
 from dados import ANALISES, get_grupo, load_data, distribuicao
 
+HERE = Path(__file__).parent
+
+# ── Autenticação ──────────────────────────────────────────────────────────────
+
+_login_attempts: dict = {}
+
+
+def load_users() -> dict:
+    if "users" in st.secrets:
+        return {u: dict(data) for u, data in st.secrets["users"].items()}
+    path = HERE / "users.json"
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def login_page() -> None:
+    st.markdown("""
+        <div style="text-align:center; margin-top:5rem; margin-bottom:2.5rem;">
+            <h1 style="font-size:2.4rem; font-weight:700; margin-bottom:0.3rem;">
+                ZiliMetrics
+            </h1>
+            <p style="color:#6B7280; font-size:0.95rem; margin:0;">
+                Distribuição de Contratos · Taxa 4,98%
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    _, col, _ = st.columns([1, 1, 1])
+    with col:
+        with st.form("login_form"):
+            username  = st.text_input("Usuário")
+            password  = st.text_input("Senha", type="password")
+            submitted = st.form_submit_button("Entrar", use_container_width=True)
+
+    if submitted:
+        attempt = _login_attempts.get(username, {"count": 0, "blocked_until": None})
+        blocked_until = attempt["blocked_until"]
+
+        if blocked_until and datetime.now() < blocked_until:
+            remaining = int((blocked_until - datetime.now()).total_seconds() / 60)
+            with col:
+                st.error(f"Usuário bloqueado. Tente novamente em {remaining} minuto(s).")
+            return
+
+        users = load_users()
+        user  = users.get(username)
+        try:
+            pw_ok = user is not None and bcrypt.checkpw(
+                password.encode(), user["password"].encode()
+            )
+        except Exception:
+            pw_ok = False
+
+        if pw_ok:
+            _login_attempts.pop(username, None)
+            st.session_state.update({
+                "logged_in":    True,
+                "display_name": user.get("display_name", username),
+            })
+            st.rerun()
+        else:
+            attempt["count"] += 1
+            if attempt["count"] >= 3:
+                attempt["blocked_until"] = datetime.now() + timedelta(hours=1)
+            _login_attempts[username] = attempt
+            with col:
+                if attempt["count"] >= 3:
+                    st.error("Usuário bloqueado por 1 hora após tentativas inválidas.")
+                else:
+                    st.error("Usuário ou senha incorretos.")
+
+
 # ── Config ────────────────────────────────────────────────────────────────────
 
 st.set_page_config(
@@ -22,6 +97,10 @@ st.set_page_config(
     page_icon="📊",
     layout="wide",
 )
+
+if not st.session_state.get("logged_in"):
+    login_page()
+    st.stop()
 
 CORES = {
     "Todos":     "#1f77b4",
@@ -117,6 +196,16 @@ df = _load(uploaded.read())
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 
 with st.sidebar:
+    st.markdown(
+        f"<p style='font-size:0.85rem; color:#6B7280; margin-bottom:0.25rem;'>"
+        f"{st.session_state.get('display_name', '')}</p>",
+        unsafe_allow_html=True,
+    )
+    if st.button("Sair", use_container_width=True):
+        st.session_state.pop("logged_in", None)
+        st.session_state.pop("display_name", None)
+        st.rerun()
+    st.divider()
     st.title("Filtros")
     grupo = st.radio(
         "Grupo",
