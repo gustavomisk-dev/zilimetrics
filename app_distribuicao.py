@@ -14,6 +14,7 @@ import requests
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+import streamlit.components.v1 as components
 
 sys.path.insert(0, str(Path(__file__).parent))
 from dados import ANALISES, get_grupo, load_data, distribuicao
@@ -75,9 +76,10 @@ def login_page() -> None:
         if pw_ok:
             _login_attempts.pop(username, None)
             st.session_state.update({
-                "logged_in":    True,
-                "display_name": user.get("display_name", username),
-                "is_admin":     user.get("is_admin", False),
+                "logged_in":      True,
+                "display_name":   user.get("display_name", username),
+                "is_admin":       user.get("is_admin", False),
+                "expand_sidebar": True,
             })
             st.rerun()
         else:
@@ -215,6 +217,7 @@ st.set_page_config(
     page_title="ZiliMetrics",
     page_icon="📊",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 st.markdown(CSS, unsafe_allow_html=True)
@@ -360,6 +363,41 @@ with st.sidebar:
 
 df_view = get_grupo(df, grupo)
 cor = CORES[grupo]
+
+# ── JavaScript sidebar ────────────────────────────────────────────────────────
+
+components.html("""
+    <script>
+    (function() {
+        function removeResizeHandles() {
+            var doc = window.parent.document;
+            doc.querySelectorAll('*').forEach(function(el) {
+                var cursor = window.parent.getComputedStyle(el).cursor;
+                if (cursor === 'col-resize' || cursor === 'ew-resize') {
+                    el.style.pointerEvents = 'none';
+                    el.style.display = 'none';
+                }
+            });
+        }
+        setTimeout(removeResizeHandles, 300);
+        setTimeout(removeResizeHandles, 1000);
+    })();
+    </script>
+""", height=0, scrolling=False)
+
+if st.session_state.pop("expand_sidebar", False):
+    components.html("""
+        <script>
+        setTimeout(function() {
+            try {
+                var btn = window.parent.document.querySelector(
+                    '[data-testid="collapsedControl"] button, [data-testid="collapsedControl"]'
+                );
+                if (btn) btn.click();
+            } catch(e) {}
+        }, 200);
+        </script>
+    """, height=0, scrolling=False)
 
 # ── Cabeçalho ─────────────────────────────────────────────────────────────────
 
