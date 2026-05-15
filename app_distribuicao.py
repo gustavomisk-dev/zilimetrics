@@ -333,14 +333,7 @@ with st.sidebar:
         st.rerun()
     st.divider()
 
-    if is_admin:
-        uploaded = st.file_uploader(
-            "Relatório CSV",
-            type="csv",
-        )
-        if uploaded is not None:
-            _SHARED["csv_bytes"] = uploaded.read()
-        st.divider()
+    st.caption(f"Admin: {is_admin} | user: {st.session_state.get('display_name')}")
 
 # ── JavaScript sidebar ────────────────────────────────────────────────────────
 
