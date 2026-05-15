@@ -1,5 +1,29 @@
+# Dados sensíveis
 *.csv
 output/
+
+# Byte-compiled / optimized / DLL files
 __pycache__/
-*.pyc
+*.py[codz]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Environments
 .env
+.envrc
+.venv
+env/
+venv/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Misc
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
