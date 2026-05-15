@@ -261,31 +261,35 @@ def load_cnae_names() -> dict:
 
 @st.cache_data(show_spinner="Carregando nomes CBO…")
 def load_cbo_names() -> dict:
-    url = "https://raw.githubusercontent.com/datasets-br/cbo/master/data/cbo.csv"
-    try:
-        r = requests.get(url, timeout=15)
-        r.raise_for_status()
-        cbo_df = pd.read_csv(io.StringIO(r.text), dtype=str)
-        PRIO = {"Ocupacao": 0, "Sinônimo": 1, "Família": 2}
-        best: dict = {}
-        family: dict = {}
-        for _, row in cbo_df.iterrows():
-            cod = str(row.get("codigo", "")).strip()
-            tipo = str(row.get("tipo", "")).strip()
-            titulo = str(row.get("titulo", "")).strip()
-            if not cod or not titulo:
-                continue
-            prio = PRIO.get(tipo, 99)
-            if tipo == "Família":
-                family[cod[:4]] = titulo
-            cur = best.get(cod)
-            if cur is None or prio < cur[0]:
-                best[cod] = (prio, titulo)
-        result = {cod: val[1] for cod, val in best.items()}
-        result["_family"] = family
-        return result
-    except Exception:
-        return {}
+    urls = [
+        "https://raw.githubusercontent.com/datasets-br/cbo/master/data/lista.csv",
+        "https://cdn.jsdelivr.net/gh/datasets-br/cbo@master/data/lista.csv",
+    ]
+    for url in urls:
+        try:
+            r = requests.get(url, timeout=15)
+            r.raise_for_status()
+            priority = {"Ocupacao": 0, "Sinônimo": 1, "Família": 2}
+            df = pd.read_csv(io.StringIO(r.text), dtype=str)
+            df["_p"] = df["tipo"].map(priority).fillna(9)
+            df = df.sort_values("_p")
+            result: dict = {}
+            family: dict = {}
+            for _, row in df.iterrows():
+                code = str(row["codigo"])
+                name = str(row["termo"])
+                bare = code.replace("-", "")
+                if bare not in result:
+                    result[bare] = name
+                if code not in result:
+                    result[code] = name
+                if row["tipo"] == "Família" and len(bare) == 4:
+                    family[bare] = name
+            result["_family"] = family
+            return result
+        except Exception:
+            continue
+    return {}
 
 
 def _show_lookup_table(codes: list, lookup_dict: dict) -> None:
@@ -517,16 +521,6 @@ def _render_chart(
     if analise["tipo"] == "top20":
         lookup = load_cnae_names() if analise["id"] == "cnae" else load_cbo_names()
         _show_lookup_table(dist["categoria"].tolist(), lookup)
-
-    with st.expander("Ver tabela", expanded=False):
-        show = dist[["categoria", val_col, "pct"]].copy()
-        show.columns = [analise["nome"], x_label, "% do Total"]
-        if fmt_moeda:
-            show[x_label] = show[x_label].apply(lambda v: f"R$ {v:,.2f}")
-        else:
-            show[x_label] = show[x_label].apply(lambda v: f"{int(v):,}")
-        show["% do Total"] = show["% do Total"].apply(lambda v: f"{v:.1f}%")
-        st.dataframe(show, hide_index=True, use_container_width=True, key=f"{key}_tbl")
 
 
 # ── Renderiza todas as seções ─────────────────────────────────────────────────
