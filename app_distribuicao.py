@@ -310,25 +310,7 @@ def _load(file_bytes: bytes):
 
 is_admin = st.session_state.get("is_admin", False)
 
-if is_admin:
-    uploaded = st.file_uploader(
-        "Faça upload do relatório CSV (sep `;`)",
-        type="csv",
-        label_visibility="collapsed",
-    )
-    if uploaded is not None:
-        _SHARED["csv_bytes"] = uploaded.read()
-
-if _SHARED["csv_bytes"] is None:
-    if is_admin:
-        st.info("⬆️ Faça o upload do arquivo CSV para começar.")
-    else:
-        st.info("⏳ Nenhum dado disponível no momento. Aguarde o administrador carregar o relatório.")
-    st.stop()
-
-df = _load(_SHARED["csv_bytes"])
-
-# ── Sidebar ───────────────────────────────────────────────────────────────────
+# ── Sidebar — sempre renderizada ──────────────────────────────────────────────
 
 with st.sidebar:
     st.markdown(f"""
@@ -346,23 +328,19 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
     if st.button("Sair", use_container_width=True):
-        st.session_state.pop("logged_in", None)
-        st.session_state.pop("display_name", None)
+        for key in ["logged_in", "display_name", "is_admin"]:
+            st.session_state.pop(key, None)
         st.rerun()
     st.divider()
-    st.markdown(f"<p style='font-weight:600; color:{GOLD};'>Filtros</p>", unsafe_allow_html=True)
-    grupo = st.radio(
-        "Grupo",
-        ["Todos", "Suspenso", "Aprovado"],
-        index=0,
-    )
-    st.divider()
-    st.caption(f"Total na base: {len(df):,} contratos")
-    st.caption(f"Suspensos: {(df['Status do Processo']=='Suspenso').sum():,}")
-    st.caption(f"Aprovados: {(df['Status do Processo']=='Aprovado').sum():,}")
 
-df_view = get_grupo(df, grupo)
-cor = CORES[grupo]
+    if is_admin:
+        uploaded = st.file_uploader(
+            "Relatório CSV",
+            type="csv",
+        )
+        if uploaded is not None:
+            _SHARED["csv_bytes"] = uploaded.read()
+        st.divider()
 
 # ── JavaScript sidebar ────────────────────────────────────────────────────────
 
@@ -398,6 +376,35 @@ if st.session_state.pop("expand_sidebar", False):
         }, 200);
         </script>
     """, height=0, scrolling=False)
+
+# ── Verifica dados ────────────────────────────────────────────────────────────
+
+if _SHARED["csv_bytes"] is None:
+    if is_admin:
+        st.info("⬆️ Faça o upload do arquivo CSV na sidebar para começar.")
+    else:
+        st.info("⏳ Nenhum dado disponível no momento. Aguarde o administrador carregar o relatório.")
+    st.stop()
+
+df = _load(_SHARED["csv_bytes"])
+
+# ── Filtros na sidebar (só após ter dados) ────────────────────────────────────
+
+with st.sidebar:
+    st.markdown(f"<p style='font-weight:600; color:{GOLD};'>Filtros</p>", unsafe_allow_html=True)
+    grupo = st.radio(
+        "Grupo",
+        ["Todos", "Suspenso", "Aprovado"],
+        index=0,
+        label_visibility="collapsed",
+    )
+    st.divider()
+    st.caption(f"Total na base: {len(df):,} contratos")
+    st.caption(f"Suspensos: {(df['Status do Processo']=='Suspenso').sum():,}")
+    st.caption(f"Aprovados: {(df['Status do Processo']=='Aprovado').sum():,}")
+
+df_view = get_grupo(df, grupo)
+cor = CORES[grupo]
 
 # ── Cabeçalho ─────────────────────────────────────────────────────────────────
 
