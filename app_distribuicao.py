@@ -34,12 +34,13 @@ def load_users() -> dict:
 
 
 def login_page() -> None:
-    st.markdown("""
+    st.markdown(f"""
         <div style="text-align:center; margin-top:5rem; margin-bottom:2.5rem;">
-            <h1 style="font-size:2.4rem; font-weight:700; margin-bottom:0.3rem;">
+            <h1 style="color:{GOLD}; font-size:2.8rem; font-weight:700;
+                       letter-spacing:1px; margin-bottom:0.3rem;">
                 ZiliMetrics
             </h1>
-            <p style="color:#6B7280; font-size:0.95rem; margin:0;">
+            <p style="color:{MUTED}; font-size:0.95rem; margin:0;">
                 Análise de Dados
             </p>
         </div>
@@ -94,13 +95,13 @@ def login_page() -> None:
 # ── Config ────────────────────────────────────────────────────────────────────
 
 GOLD      = "#F0B429"
-DARK_BG   = "#0F0F0F"
 DARK_CARD = "#1A1A1A"
 BORDER    = "#262626"
 MUTED     = "#6B7280"
 
 CSS = f"""
 <style>
+/* ── chrome do Streamlit ─────────────────────────────────────── */
 #MainMenu {{ visibility: hidden; }}
 footer {{ visibility: hidden; }}
 [data-testid="stDecoration"] {{ display: none; }}
@@ -109,26 +110,46 @@ footer {{ visibility: hidden; }}
 [data-testid="InputInstructions"] {{ display: none !important; }}
 h1 a, h2 a, h3 a, h4 a, h5 a, h6 a {{ display: none !important; }}
 
-.stApp {{ background-color: {DARK_BG}; color: #E5E7EB; }}
+/* ── fundo geral ─────────────────────────────────────────────── */
+.stApp {{ background-color: #0F0F0F; }}
 
+/* ── sidebar ─────────────────────────────────────────────────── */
 [data-testid="stSidebar"] > div:first-child {{
+    width: 260px !important;
+    min-width: 260px !important;
+    max-width: 260px !important;
     background-color: #111111;
     border-right: 1px solid {BORDER};
     padding-top: 1.5rem;
 }}
 
+/* ── botão primário ──────────────────────────────────────────── */
 .stButton > button {{
     background-color: {GOLD} !important;
-    color: {DARK_BG} !important;
+    color: #0F0F0F !important;
     border: none !important;
     font-weight: 600 !important;
     border-radius: 6px !important;
+    transition: background-color 0.15s;
 }}
 .stButton > button:hover {{
     background-color: #D4980F !important;
-    color: {DARK_BG} !important;
+    color: #0F0F0F !important;
 }}
 
+/* ── botão de download ───────────────────────────────────────── */
+.stDownloadButton > button {{
+    background-color: transparent !important;
+    color: {GOLD} !important;
+    border: 1px solid {GOLD} !important;
+    font-weight: 500 !important;
+    border-radius: 6px !important;
+}}
+.stDownloadButton > button:hover {{
+    background-color: rgba(240,180,41,0.08) !important;
+}}
+
+/* ── inputs de texto ─────────────────────────────────────────── */
 div[data-baseweb="input"] > div {{
     background-color: {DARK_CARD} !important;
     border-color: #333333 !important;
@@ -138,34 +159,55 @@ div[data-baseweb="input"] > div:focus-within {{
     border-color: {GOLD} !important;
     box-shadow: none !important;
 }}
+div[data-baseweb="input"] input,
+div[data-baseweb="input"] input[type="password"] {{
+    height: 2rem !important;
+    line-height: 2rem !important;
+}}
 
+/* ── selectbox ───────────────────────────────────────────────── */
 div[data-baseweb="select"] > div {{
     background-color: {DARK_CARD} !important;
     border-color: #333333 !important;
     border-radius: 6px !important;
 }}
+div[data-baseweb="select"] > div:focus-within {{
+    border-color: {GOLD} !important;
+    box-shadow: none !important;
+}}
 
+/* ── dataframe ───────────────────────────────────────────────── */
 [data-testid="stDataFrame"] {{
     border: 1px solid {BORDER};
     border-radius: 8px;
     overflow: hidden;
 }}
 
-hr {{ border-color: {BORDER} !important; }}
-
-[data-testid="stFileUploader"] {{
-    background-color: {DARK_CARD};
-    border: 1px dashed #444 !important;
-    border-radius: 8px;
+/* ── menu lateral (radio sem bolinhas) ───────────────────────── */
+[data-testid="stSidebar"] div[data-testid="stRadio"] > div {{
+    gap: 2px !important;
 }}
-
-[data-testid="stTab"] {{
-    color: {MUTED} !important;
+[data-testid="stSidebar"] div[data-testid="stRadio"] > div > label > div:first-child {{
+    display: none !important;
 }}
-[data-testid="stTab"][aria-selected="true"] {{
+[data-testid="stSidebar"] div[data-testid="stRadio"] > div > label {{
+    padding: 0.45rem 0.75rem !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    transition: background-color 0.15s !important;
+    width: 100% !important;
+}}
+[data-testid="stSidebar"] div[data-testid="stRadio"] > div > label:hover {{
+    background-color: rgba(255,255,255,0.05) !important;
+}}
+[data-testid="stSidebar"] div[data-testid="stRadio"] > div > label:has(input:checked) {{
+    background-color: rgba(240,180,41,0.12) !important;
     color: {GOLD} !important;
-    border-bottom-color: {GOLD} !important;
+    font-weight: 600 !important;
 }}
+
+/* ── divisor ─────────────────────────────────────────────────── */
+hr {{ border-color: {BORDER} !important; }}
 </style>
 """
 
